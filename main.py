@@ -1,9 +1,13 @@
 
+#----------------------------------------------------- Importing the required modules ---------------------------------------------------------
+
+
 from pathlib import Path
 from ase import Atoms
 import numpy as np
+from dscribe.descriptors import ACSF
 
-# Extract data from the data file
+#----------------------------------TASK 1 ----------- Extract data from the data file ---------------------------------------------------------
 
 def _parse_n2p2_block(block):
     symbols = []
@@ -85,3 +89,54 @@ if __name__ == "__main__":
 
     print("Number of structures:", len(atoms_list))
     print("Reference energies:", energies)
+
+
+#----------------------------------TASK 2 ----------- Building descriptors---------------------------------------------------------
+
+
+def build_descriptors(atoms_list):
+
+    species = sorted({
+        symbol
+        for atoms in atoms_list
+        for symbol in atoms.get_chemical_symbols()
+    })
+
+    acsf = ACSF(
+        species=species,
+        r_cut=6.0,
+        g2_params=[
+            [1.0, 0.0],
+            [1.0, 2.0],
+            [1.0, 4.0]
+        ],
+        g4_params=[
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, -1.0]
+        ]
+    )
+
+    features = []
+
+    for atoms in atoms_list:
+
+        atomic_descriptors = acsf.create(atoms)
+
+        structure_descriptor = np.mean(
+            atomic_descriptors, axis=0
+        )
+
+        features.append(structure_descriptor)
+
+    X = np.array(features)
+
+    return X
+
+
+# Example usage
+if __name__ == "__main__":
+    atoms_list, energies = read_n2p2("input.data")
+
+    X = build_descriptors(atoms_list)
+
+    print("Feature matrix shape:", X.shape)
